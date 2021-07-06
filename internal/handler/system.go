@@ -205,6 +205,7 @@ func (s SystemHandler) Recover(c *gin.Context) {
 			tx := s.db.Begin()
 			defer func() {
 				if err := recover(); err != nil {
+					logrus.Errorf("recover db data failure in panic %s", err.Error())
 					tx.Rollback()
 				}
 			}()
