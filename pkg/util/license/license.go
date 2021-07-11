@@ -33,15 +33,39 @@ import (
 
 // LicenseInfo license data
 type LicenseInfo struct {
-	Code        string    `json:"code"`
-	Company     string    `json:"company"`
-	Cluster     int64     `json:"cluster"`
-	Node        int64     `json:"node"`
-	Memory      int64     `json:"memory"`
-	EndTime     string    `json:"end_time"`
-	StartTime   string    `json:"start_time"`
-	Features    []Feature `json:"features"`
-	IsPermanent bool      `json:"is_permanent"`
+	Code      string    `json:"code"`
+	Company   string    `json:"company"`
+	Cluster   int64     `json:"cluster"`
+	Node      int64     `json:"node"`
+	Memory    int64     `json:"memory"`
+	EndTime   string    `json:"end_time"`
+	StartTime string    `json:"start_time"`
+	Features  []Feature `json:"features"`
+}
+
+//LicenseResp license resp data
+type LicenseResp struct {
+	Code       string    `json:"code" description:"code"`
+	Company    string    `json:"company" description:"公司名"`
+	ExpectNode int64     `json:"expect_node" description:"授权节点数量"`
+	ActualNode int64     `json:"actual_node" description:"实际节点数量"`
+	Memory     int64     `json:"memory" description:"授权内存"`
+	EndTime    string    `json:"end_time" description:"结束时间"`
+	StartTime  string    `json:"start_time" description:"开始时间"`
+	Features   []Feature `json:"features" description:"特性列表"`
+	RegionName string    `json:"region_name"`
+}
+
+type AllLicense struct {
+	IsExpired      bool           `json:"is_expired"`
+	RegionNums     int64          `json:"region_nums"`
+	IsPermanent    bool           `json:"is_permanent" description:"是否为永久授权"`
+	EndTime        string         `json:"end_time,omitempty" description:"结束时间"`
+	RegionLicenses []*LicenseResp `json:"region_licenses,omitempty" description:"集群licenses"`
+}
+
+type AllLicenseResp struct {
+	Bean *AllLicense `json:"bean"`
 }
 
 // HaveFeature -

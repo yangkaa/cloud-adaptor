@@ -79,3 +79,8 @@ type RKEClusterRepository interface {
 	ListCluster(eid string) ([]*model.RKECluster, error)
 	DeleteCluster(eid, name string) error
 }
+
+type LicenseRepository interface {
+	GetFirstEnterprise()(*model.Enterprise, error)
+	GetRegionsByEID(eid string)([]*model.Region, error)
+}

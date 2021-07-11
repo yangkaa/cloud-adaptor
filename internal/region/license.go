@@ -16,28 +16,39 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <http://www.gnu.org/licenses/>.
 
-package handler
+package region
 
 import (
-	"github.com/gin-gonic/gin"
-	"goodrain.com/cloud-adaptor/internal/usecase"
-	"goodrain.com/cloud-adaptor/pkg/util/ginutil"
-	"goodrain.com/cloud-adaptor/pkg/util/license"
+	"fmt"
+	"goodrain.com/cloud-adaptor/pkg/util"
+	utilhttp "goodrain.com/cloud-adaptor/pkg/util/httputil"
+	licenseutil "goodrain.com/cloud-adaptor/pkg/util/license"
 )
 
-// LicenseHandler -
-type LicenseHandler struct {
-	LicenseUsecase usecase.LicenseUsecase
+func (r *regionImpl) License() LicenseInterface {
+	return &license{regionImpl: *r, prefix: "/license"}
 }
 
-// NewLicenseHandler new license handler
-func NewLicenseHandler(licenseUcase usecase.LicenseUsecase) *LicenseHandler {
-	return &LicenseHandler{LicenseUsecase: licenseUcase}
+type license struct {
+	regionImpl
+	prefix string
 }
 
-// GetLicense -
-func (l *LicenseHandler) GetLicense(ctx *gin.Context) {
-	allLicense := l.LicenseUsecase.GetLicense()
-	resp := licenseutil.AllLicenseResp{Bean: allLicense}
-	ginutil.JSON(ctx, resp)
+type LicenseInterface interface {
+	Get() (*licenseutil.LicenseResp, *util.APIHandleError)
+}
+
+// Get -
+func (l *license) Get() (*licenseutil.LicenseResp, *util.APIHandleError) {
+	var res utilhttp.ResponseBody
+	var lic licenseutil.LicenseResp
+	res.Bean = &lic
+	code, err := l.DoRequest(l.prefix, "GET", nil, &res)
+	if err != nil {
+		return nil, util.CreateAPIHandleError(code, err)
+	}
+	if code != 200 {
+		return nil, util.CreateAPIHandleError(code, fmt.Errorf("Get license code %d", code))
+	}
+	return &lic, nil
 }

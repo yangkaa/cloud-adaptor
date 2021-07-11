@@ -1,5 +1,5 @@
+// Copyright (C) 2014-2018 Goodrain Co., Ltd.
 // RAINBOND, Application Management Platform
-// Copyright (C) 2020-2021 Goodrain Co., Ltd.
 
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -16,14 +16,30 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <http://www.gnu.org/licenses/>.
 
-package usecase
+package util
 
-import "github.com/google/wire"
-
-// ProviderSet is biz providers.
-var ProviderSet = wire.NewSet(
-	NewClusterUsecase,
-	NewAppStoreUsecase,
-	NewAppTemplate,
-	NewLicenseUsecase,
+import (
+	"fmt"
 )
+
+//APIHandleError handle create err for api
+type APIHandleError struct {
+	Code int
+	Err  error
+}
+
+//CreateAPIHandleError create APIHandleError
+func CreateAPIHandleError(code int, err error) *APIHandleError {
+	return &APIHandleError{
+		Code: code,
+		Err:  err,
+	}
+}
+
+func (a *APIHandleError) Error() string {
+	return a.Err.Error()
+}
+
+func (a *APIHandleError) String() string {
+	return fmt.Sprintf("(Code:%d) %s", a.Code, a.Err.Error())
+}
