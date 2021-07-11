@@ -26,9 +26,9 @@ type Enterprise struct {
 type Region struct {
 	EnterpriseID string `gorm:"column:enterprise_id"`
 	RegionName   string `gorm:"column:region_name"`
-	SSlCaCert    string `gorm:"ssl_ca_cert"`
-	CertFile     string `gorm:"cert_file"`
-	KeyFile      string `gorm:"key_file"`
-	URL          string `gorm:"url"`
-	Token        string `gorm:"token"`
+	SSlCaCert    string `gorm:"column:ssl_ca_cert"`
+	CertFile     string `gorm:"column:cert_file"`
+	KeyFile      string `gorm:"column:key_file"`
+	URL          string `gorm:"column:url"`
+	Token        string `gorm:"column:token"`
 }

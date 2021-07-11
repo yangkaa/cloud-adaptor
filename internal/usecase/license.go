@@ -19,11 +19,13 @@
 package usecase
 
 import (
+	"fmt"
 	"github.com/sirupsen/logrus"
 	"goodrain.com/cloud-adaptor/internal/region"
 	"goodrain.com/cloud-adaptor/internal/repo"
 	licenseutil "goodrain.com/cloud-adaptor/pkg/util/license"
 	"goodrain.com/cloud-adaptor/pkg/util/timeutil"
+	"os"
 	"time"
 )
 
@@ -83,23 +85,59 @@ func (l *LicenseUsecase) GetRegionLicenses() ([]*licenseutil.LicenseResp, error)
 	}
 	var licenses []*licenseutil.LicenseResp
 	for _, rg := range regions {
+		if err := l.generateCert(rg.RegionName, rg.SSlCaCert, rg.CertFile, rg.KeyFile); err != nil {
+			continue
+		}
 		rainbondClient, err := region.NewRegion(region.APIConf{
 			Endpoints: []string{rg.URL},
 			Token:     rg.Token,
-			Cacert:    rg.SSlCaCert,
-			Cert:      rg.CertFile,
-			CertKey:   rg.KeyFile,
+			Cacert:    fmt.Sprintf("./certs/%s_ca.pem", rg.RegionName),
+			Cert:      fmt.Sprintf("./certs/%s_client.pem", rg.RegionName),
+			CertKey:   fmt.Sprintf("./certs/%s_client_key.pem", rg.RegionName),
 		})
 		if err != nil {
-			logrus.Errorf("generate rainbond client failed %v", err)
+			logrus.Errorf("new rainbond client failed %v", err)
 			continue
 		}
 		license, err := rainbondClient.License().Get()
-		if err != nil {
+		if err != nil && license == nil {
 			logrus.Errorf("get rainbond license failed %v", err)
 			continue
 		}
+		license.RegionName = rg.RegionName
 		licenses = append(licenses, license)
 	}
 	return licenses, nil
+}
+
+func (l *LicenseUsecase) generateCert(regionName, caCert, cert, certKey string) error {
+	err := os.MkdirAll("./certs", os.ModePerm)
+	if err != nil {
+		logrus.Errorf("create cert directly failed %v", err)
+		return err
+	}
+	fileNames := map[string]string{
+		fmt.Sprintf("./certs/%s_ca.pem", regionName):         caCert,
+		fmt.Sprintf("./certs/%s_client.pem", regionName):     cert,
+		fmt.Sprintf("./certs/%s_client_key.pem", regionName): certKey,
+	}
+	for fileName, content := range fileNames {
+		f, err := os.Create(fileName)
+		if err != nil {
+			logrus.Errorf("create ca cert failed %v", err)
+			return err
+		}
+		_, err = f.WriteString(content)
+		if err != nil {
+			logrus.Errorf("write cert %s failed %v", fileName, err)
+			f.Close()
+			return err
+		}
+		err = f.Close()
+		if err != nil {
+			logrus.Errorf("close cert file %s failed %v", fileName, err)
+			return err
+		}
+	}
+	return nil
 }
