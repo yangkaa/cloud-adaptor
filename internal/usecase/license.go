@@ -59,9 +59,11 @@ func (l *LicenseUsecase) GetLicense() *licenseutil.AllLicense {
 	if endTime.IsZero() {
 		allLicense.IsPermanent = true
 	}
-	if !allLicense.IsPermanent && timeutil.JudgeTimeIsExpired(consoleLicense.EndTime) {
+	if !allLicense.IsPermanent {
+		if timeutil.JudgeTimeIsExpired(consoleLicense.EndTime) {
+			allLicense.IsExpired = true
+		}
 		allLicense.EndTime = consoleLicense.EndTime
-		allLicense.IsExpired = true
 	}
 	allLicense.RegionNums = consoleLicense.Cluster
 	// get region licenses
