@@ -19,6 +19,7 @@
 package region
 
 import (
+	"context"
 	"crypto/tls"
 	"crypto/x509"
 	"encoding/json"
@@ -76,7 +77,7 @@ func NewRegion(c APIConf) (Region, error) {
 			}
 			re.Client = &http.Client{
 				Transport: tr,
-				Timeout:   1 * time.Second,
+				Timeout:   5 * time.Second,
 			}
 		} else {
 			re.Client = http.DefaultClient
@@ -102,7 +103,10 @@ func (r *regionImpl) GetEndpoint() string {
 
 //DoRequest do request
 func (r *regionImpl) DoRequest(path, method string, body io.Reader, decode *utilhttp.ResponseBody) (int, error) {
-	request, err := http.NewRequest(method, r.GetEndpoint()+path, body)
+	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
+	defer cancel()
+
+	request, err := http.NewRequestWithContext(ctx, method, r.GetEndpoint()+path, body)
 	if err != nil {
 		return 500, err
 	}
