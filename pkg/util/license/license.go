@@ -60,7 +60,7 @@ type AllLicense struct {
 	IsExpired      bool           `json:"is_expired"`
 	RegionNums     int64          `json:"region_nums"`
 	IsPermanent    bool           `json:"is_permanent" description:"是否为永久授权"`
-	EndTime        string         `json:"end_time,omitempty" description:"结束时间"`
+	EndTime        string         `json:"end_time" description:"结束时间"`
 	RegionLicenses []*LicenseResp `json:"region_licenses,omitempty" description:"集群licenses"`
 }
 

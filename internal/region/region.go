@@ -23,7 +23,6 @@ import (
 	"crypto/x509"
 	"encoding/json"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"time"
 
@@ -62,13 +61,9 @@ func NewRegion(c APIConf) (Region, error) {
 		}
 		if c.Cacert != "" && c.Cert != "" && c.CertKey != "" {
 			pool := x509.NewCertPool()
-			caCrt, err := ioutil.ReadFile(c.Cacert)
-			if err != nil {
-				logrus.Errorf("read ca file err: %s", err)
-				return nil, err
-			}
+			caCrt := []byte(c.Cacert)
 			pool.AppendCertsFromPEM(caCrt)
-			cliCrt, err := tls.LoadX509KeyPair(c.Cert, c.CertKey)
+			cliCrt, err := tls.X509KeyPair([]byte(c.Cert), []byte(c.CertKey))
 			if err != nil {
 				logrus.Errorf("Loadx509keypair err: %s", err)
 				return nil, err
@@ -81,7 +76,7 @@ func NewRegion(c APIConf) (Region, error) {
 			}
 			re.Client = &http.Client{
 				Transport: tr,
-				Timeout:   15 * time.Second,
+				Timeout:   5 * time.Second,
 			}
 		} else {
 			re.Client = http.DefaultClient

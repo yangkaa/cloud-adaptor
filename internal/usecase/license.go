@@ -19,25 +19,34 @@
 package usecase
 
 import (
-	"fmt"
 	"github.com/sirupsen/logrus"
 	"goodrain.com/cloud-adaptor/internal/region"
 	"goodrain.com/cloud-adaptor/internal/repo"
 	licenseutil "goodrain.com/cloud-adaptor/pkg/util/license"
 	"goodrain.com/cloud-adaptor/pkg/util/timeutil"
-	"os"
 	"time"
 )
 
+type licenseCache struct {
+	license licenseutil.LicenseResp
+	timeOut time.Time
+}
+
+func (c *licenseCache) IsExpired() bool {
+	return c.timeOut.Before(time.Now())
+}
+
 // LicenseUsecase license usecase
 type LicenseUsecase struct {
-	LicenseRepo repo.LicenseRepository
+	LicenseRepo    repo.LicenseRepository
+	regionLicenses map[string]licenseCache
 }
 
 // NewLicenseUsecase new license usecase
 func NewLicenseUsecase(licenseRepo repo.LicenseRepository) *LicenseUsecase {
 	return &LicenseUsecase{
-		LicenseRepo: licenseRepo,
+		LicenseRepo:    licenseRepo,
+		regionLicenses: make(map[string]licenseCache),
 	}
 }
 
@@ -47,25 +56,16 @@ func (l *LicenseUsecase) GetLicense() *licenseutil.AllLicense {
 	allLicense := &licenseutil.AllLicense{}
 	// handle console license
 	if consoleLicense == nil {
-		allLicense.EndTime = time.Now().Add(time.Hour * 24).Format("2006-01-02 15:04:05")
 		return allLicense
 	}
-	endTime, err := time.Parse("2006-01-02 15:04:05", consoleLicense.EndTime)
-	if err != nil {
-		logrus.Infof("parse end time failed %v", err)
-		endTime = time.Now().Add(time.Hour * 24)
-		consoleLicense.EndTime = endTime.Format("2006-01-02 15:04:05")
-	}
-	if endTime.IsZero() {
+	allLicense.EndTime = consoleLicense.EndTime
+	allLicense.RegionNums = consoleLicense.Cluster
+	if consoleLicense.EndTime == "" {
 		allLicense.IsPermanent = true
 	}
-	if !allLicense.IsPermanent {
-		if timeutil.JudgeTimeIsExpired(consoleLicense.EndTime) {
-			allLicense.IsExpired = true
-		}
-		allLicense.EndTime = consoleLicense.EndTime
+	if !allLicense.IsPermanent && timeutil.JudgeTimeIsExpired(consoleLicense.EndTime) {
+		allLicense.IsExpired = true
 	}
-	allLicense.RegionNums = consoleLicense.Cluster
 	// get region licenses
 	regionLicenses, err := l.GetRegionLicenses()
 	if err != nil {
@@ -87,15 +87,21 @@ func (l *LicenseUsecase) GetRegionLicenses() ([]*licenseutil.LicenseResp, error)
 	}
 	var licenses []*licenseutil.LicenseResp
 	for _, rg := range regions {
-		if err := l.generateCert(rg.RegionName, rg.SSlCaCert, rg.CertFile, rg.KeyFile); err != nil {
-			continue
+		if cache, ok := l.regionLicenses[rg.RegionName]; ok {
+			if cache.IsExpired() {
+				delete(l.regionLicenses, rg.RegionName)
+			} else {
+				logrus.Infof("get regin [%s] license by cache", rg.RegionName)
+				licenses = append(licenses, &cache.license)
+				continue
+			}
 		}
 		rainbondClient, err := region.NewRegion(region.APIConf{
 			Endpoints: []string{rg.URL},
 			Token:     rg.Token,
-			Cacert:    fmt.Sprintf("./certs/%s_ca.pem", rg.RegionName),
-			Cert:      fmt.Sprintf("./certs/%s_client.pem", rg.RegionName),
-			CertKey:   fmt.Sprintf("./certs/%s_client_key.pem", rg.RegionName),
+			Cacert:    rg.SSlCaCert,
+			Cert:      rg.CertFile,
+			CertKey:   rg.KeyFile,
 		})
 		if err != nil {
 			logrus.Errorf("new rainbond client failed %v", err)
@@ -108,38 +114,7 @@ func (l *LicenseUsecase) GetRegionLicenses() ([]*licenseutil.LicenseResp, error)
 		}
 		license.RegionName = rg.RegionName
 		licenses = append(licenses, license)
+		l.regionLicenses[rg.RegionName] = licenseCache{license: *license, timeOut: time.Now().Add(time.Hour * 24)}
 	}
 	return licenses, nil
-}
-
-func (l *LicenseUsecase) generateCert(regionName, caCert, cert, certKey string) error {
-	err := os.MkdirAll("./certs", os.ModePerm)
-	if err != nil {
-		logrus.Errorf("create cert directly failed %v", err)
-		return err
-	}
-	fileNames := map[string]string{
-		fmt.Sprintf("./certs/%s_ca.pem", regionName):         caCert,
-		fmt.Sprintf("./certs/%s_client.pem", regionName):     cert,
-		fmt.Sprintf("./certs/%s_client_key.pem", regionName): certKey,
-	}
-	for fileName, content := range fileNames {
-		f, err := os.Create(fileName)
-		if err != nil {
-			logrus.Errorf("create ca cert failed %v", err)
-			return err
-		}
-		_, err = f.WriteString(content)
-		if err != nil {
-			logrus.Errorf("write cert %s failed %v", fileName, err)
-			f.Close()
-			return err
-		}
-		err = f.Close()
-		if err != nil {
-			logrus.Errorf("close cert file %s failed %v", fileName, err)
-			return err
-		}
-	}
-	return nil
 }

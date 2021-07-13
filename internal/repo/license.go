@@ -19,6 +19,7 @@
 package repo
 
 import (
+	"fmt"
 	"goodrain.com/cloud-adaptor/internal/model"
 	"gorm.io/gorm"
 )
@@ -43,7 +44,8 @@ func (l *LicenseRepo) GetFirstEnterprise() (*model.Enterprise, error) {
 
 func (l *LicenseRepo) GetRegionsByEID(eid string) ([]*model.Region, error) {
 	var regions []*model.Region
-	if err := l.DB.Raw("select * from region_info where status = 1").Scan(&regions).Error; err != nil {
+	sql := fmt.Sprintf("select * from region_info where status = 1 and enterprise_id = '%s'", eid)
+	if err := l.DB.Raw(sql).Scan(&regions).Error; err != nil {
 		return nil, err
 	}
 	return regions, nil
