@@ -76,7 +76,7 @@ func NewRegion(c APIConf) (Region, error) {
 			}
 			re.Client = &http.Client{
 				Transport: tr,
-				Timeout:   5 * time.Second,
+				Timeout:   1 * time.Second,
 			}
 		} else {
 			re.Client = http.DefaultClient
