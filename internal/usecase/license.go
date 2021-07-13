@@ -58,6 +58,7 @@ func (l *LicenseUsecase) GetLicense() *licenseutil.AllLicense {
 	if consoleLicense == nil {
 		return allLicense
 	}
+	allLicense.HaveLicense = true
 	allLicense.EndTime = consoleLicense.EndTime
 	allLicense.RegionNums = consoleLicense.Cluster
 	if consoleLicense.EndTime == "" {

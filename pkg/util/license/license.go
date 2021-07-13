@@ -57,6 +57,7 @@ type LicenseResp struct {
 }
 
 type AllLicense struct {
+	HaveLicense    bool           `json:"have_license"`
 	IsExpired      bool           `json:"is_expired"`
 	RegionNums     int64          `json:"region_nums"`
 	IsPermanent    bool           `json:"is_permanent" description:"是否为永久授权"`
