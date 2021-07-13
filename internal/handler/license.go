@@ -22,7 +22,6 @@ import (
 	"github.com/gin-gonic/gin"
 	"goodrain.com/cloud-adaptor/internal/usecase"
 	"goodrain.com/cloud-adaptor/pkg/util/ginutil"
-	"goodrain.com/cloud-adaptor/pkg/util/license"
 )
 
 // LicenseHandler -
@@ -38,6 +37,5 @@ func NewLicenseHandler(licenseUcase usecase.LicenseUsecase) *LicenseHandler {
 // GetLicense -
 func (l *LicenseHandler) GetLicense(ctx *gin.Context) {
 	allLicense := l.LicenseUsecase.GetLicense()
-	resp := licenseutil.AllLicenseResp{Bean: allLicense}
-	ginutil.JSON(ctx, resp)
+	ginutil.JSON(ctx, allLicense)
 }

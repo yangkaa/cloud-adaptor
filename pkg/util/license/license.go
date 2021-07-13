@@ -64,10 +64,6 @@ type AllLicense struct {
 	RegionLicenses []*LicenseResp `json:"region_licenses,omitempty" description:"集群licenses"`
 }
 
-type AllLicenseResp struct {
-	Bean *AllLicense `json:"bean"`
-}
-
 // HaveFeature -
 func (l *LicenseInfo) HaveFeature(code string) bool {
 	for _, f := range l.Features {
