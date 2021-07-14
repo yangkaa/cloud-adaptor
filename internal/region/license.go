@@ -37,16 +37,16 @@ type license struct {
 }
 
 type LicenseInterface interface {
-	Get() (*licenseutil.LicenseResp, *util.APIHandleError)
+	Get(ctx context.Context) (*licenseutil.LicenseResp, *util.APIHandleError)
 }
 
 // Get -
-func (l *license) Get() (*licenseutil.LicenseResp, *util.APIHandleError) {
+func (l *license) Get(ctx context.Context) (*licenseutil.LicenseResp, *util.APIHandleError) {
 	var res utilhttp.ResponseBody
 	var lic licenseutil.LicenseResp
 	res.Bean = &lic
 
-	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
+	ctx, cancel := context.WithTimeout(ctx, 1*time.Second)
 	defer cancel()
 
 	code, err := l.DoRequest(ctx, l.prefix, "GET", nil, &res)

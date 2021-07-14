@@ -36,6 +36,6 @@ func NewLicenseHandler(licenseUcase usecase.LicenseUsecase) *LicenseHandler {
 
 // GetLicense -
 func (l *LicenseHandler) GetLicense(ctx *gin.Context) {
-	allLicense := l.LicenseUsecase.GetLicense()
+	allLicense := l.LicenseUsecase.GetLicense(ctx.Request.Context())
 	ginutil.JSON(ctx, allLicense)
 }

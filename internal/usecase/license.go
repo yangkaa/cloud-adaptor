@@ -19,6 +19,7 @@
 package usecase
 
 import (
+	"context"
 	"github.com/sirupsen/logrus"
 	"goodrain.com/cloud-adaptor/internal/region"
 	"goodrain.com/cloud-adaptor/internal/repo"
@@ -51,7 +52,7 @@ func NewLicenseUsecase(licenseRepo repo.LicenseRepository) *LicenseUsecase {
 }
 
 // GetLicense -
-func (l *LicenseUsecase) GetLicense() *licenseutil.AllLicense {
+func (l *LicenseUsecase) GetLicense(ctx context.Context) *licenseutil.AllLicense {
 	consoleLicense := licenseutil.ReadLicense()
 	allLicense := &licenseutil.AllLicense{}
 	// handle console license
@@ -68,7 +69,7 @@ func (l *LicenseUsecase) GetLicense() *licenseutil.AllLicense {
 		allLicense.IsExpired = true
 	}
 	// get region licenses
-	regionLicenses, err := l.GetRegionLicenses()
+	regionLicenses, err := l.GetRegionLicenses(ctx)
 	if err != nil {
 		return allLicense
 	}
@@ -77,7 +78,7 @@ func (l *LicenseUsecase) GetLicense() *licenseutil.AllLicense {
 }
 
 // GetRegionLicenses -
-func (l *LicenseUsecase) GetRegionLicenses() ([]*licenseutil.LicenseResp, error) {
+func (l *LicenseUsecase) GetRegionLicenses(ctx context.Context) ([]*licenseutil.LicenseResp, error) {
 	ent, err := l.LicenseRepo.GetFirstEnterprise()
 	if err != nil {
 		return nil, err
@@ -108,7 +109,7 @@ func (l *LicenseUsecase) GetRegionLicenses() ([]*licenseutil.LicenseResp, error)
 			logrus.Errorf("new rainbond client failed %v", err)
 			continue
 		}
-		license, err := rainbondClient.License().Get()
+		license, err := rainbondClient.License().Get(ctx)
 		if err != nil && license == nil {
 			logrus.Errorf("get rainbond license failed %v", err)
 			continue
