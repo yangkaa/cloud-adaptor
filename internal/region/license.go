@@ -20,6 +20,7 @@ package region
 
 import (
 	"fmt"
+	"github.com/sirupsen/logrus"
 	"goodrain.com/cloud-adaptor/pkg/util"
 	utilhttp "goodrain.com/cloud-adaptor/pkg/util/httputil"
 	licenseutil "goodrain.com/cloud-adaptor/pkg/util/license"
@@ -51,9 +52,11 @@ func (l *license) Get(ctx context.Context) (*licenseutil.LicenseResp, *util.APIH
 
 	code, err := l.DoRequest(ctx, l.prefix, "GET", nil, &res)
 	if err != nil {
+		logrus.Debugf("------> request failed %v", err)
 		return nil, util.CreateAPIHandleError(code, err)
 	}
 	if code != 200 {
+		logrus.Debugf("------> request code failed %v", code)
 		return nil, util.CreateAPIHandleError(code, fmt.Errorf("Get license code %d", code))
 	}
 	return &lic, nil

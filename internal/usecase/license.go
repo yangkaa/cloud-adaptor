@@ -110,6 +110,7 @@ func (l *LicenseUsecase) GetRegionLicenses(ctx context.Context) ([]*licenseutil.
 			continue
 		}
 		license, err := rainbondClient.License().Get(ctx)
+		logrus.Debugf("------> lic is (%v/%T) err is (%v/%T)", license, license, err, err)
 		if err != nil && license == nil {
 			logrus.Errorf("get rainbond license failed %v", err)
 			continue
