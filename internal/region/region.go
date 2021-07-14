@@ -40,18 +40,19 @@ var AllTenant string
 
 //Region region api
 type Region interface {
-	DoRequest(path, method string, body io.Reader, decode *utilhttp.ResponseBody) (int, error)
+	DoRequest(ctx context.Context, path, method string, body io.Reader, decode *utilhttp.ResponseBody) (int, error)
 	License() LicenseInterface
 }
 
 //APIConf region api config
 type APIConf struct {
-	Endpoints []string `yaml:"endpoints"`
-	Token     string   `yaml:"token"`
-	AuthType  string   `yaml:"auth_type"`
-	Cacert    string   `yaml:"client-ca-file"`
-	Cert      string   `yaml:"tls-cert-file"`
-	CertKey   string   `yaml:"tls-private-key-file"`
+	Endpoints []string      `yaml:"endpoints"`
+	Token     string        `yaml:"token"`
+	AuthType  string        `yaml:"auth_type"`
+	Cacert    string        `yaml:"client-ca-file"`
+	Cert      string        `yaml:"tls-cert-file"`
+	CertKey   string        `yaml:"tls-private-key-file"`
+	Timeout   time.Duration `yaml:"timeout"`
 }
 
 //NewRegion NewRegion
@@ -77,7 +78,7 @@ func NewRegion(c APIConf) (Region, error) {
 			}
 			re.Client = &http.Client{
 				Transport: tr,
-				Timeout:   5 * time.Second,
+				Timeout:   c.Timeout,
 			}
 		} else {
 			re.Client = http.DefaultClient
@@ -102,10 +103,7 @@ func (r *regionImpl) GetEndpoint() string {
 }
 
 //DoRequest do request
-func (r *regionImpl) DoRequest(path, method string, body io.Reader, decode *utilhttp.ResponseBody) (int, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
-	defer cancel()
-
+func (r *regionImpl) DoRequest(ctx context.Context, path, method string, body io.Reader, decode *utilhttp.ResponseBody) (int, error) {
 	request, err := http.NewRequestWithContext(ctx, method, r.GetEndpoint()+path, body)
 	if err != nil {
 		return 500, err
@@ -118,9 +116,8 @@ func (r *regionImpl) DoRequest(path, method string, body io.Reader, decode *util
 	if err != nil {
 		return 500, err
 	}
-	if res.Body != nil {
-		defer res.Body.Close()
-	}
+
+	defer res.Body.Close()
 	if decode != nil {
 		if err := json.NewDecoder(res.Body).Decode(decode); err != nil {
 			return res.StatusCode, err

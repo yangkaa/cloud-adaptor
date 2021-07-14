@@ -23,6 +23,8 @@ import (
 	"goodrain.com/cloud-adaptor/pkg/util"
 	utilhttp "goodrain.com/cloud-adaptor/pkg/util/httputil"
 	licenseutil "goodrain.com/cloud-adaptor/pkg/util/license"
+	"time"
+	"context"
 )
 
 func (r *regionImpl) License() LicenseInterface {
@@ -43,7 +45,11 @@ func (l *license) Get() (*licenseutil.LicenseResp, *util.APIHandleError) {
 	var res utilhttp.ResponseBody
 	var lic licenseutil.LicenseResp
 	res.Bean = &lic
-	code, err := l.DoRequest(l.prefix, "GET", nil, &res)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
+	defer cancel()
+
+	code, err := l.DoRequest(ctx, l.prefix, "GET", nil, &res)
 	if err != nil {
 		return nil, util.CreateAPIHandleError(code, err)
 	}
