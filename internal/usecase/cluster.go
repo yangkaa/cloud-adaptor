@@ -764,6 +764,7 @@ func (c *ClusterUsecase) InstallCluster(eid, clusterID string) (*model.CreateKub
 		Provider:     "rke",
 		EnterpriseID: eid,
 		TaskID:       uuidutil.NewUUID(),
+		ClusterID:    clusterID,
 	}
 	if err := c.CreateKubernetesTaskRepo.Create(newTask); err != nil {
 		logrus.Errorf("create kubernetes task failure %s", err.Error())
