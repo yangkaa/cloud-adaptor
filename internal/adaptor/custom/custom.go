@@ -66,7 +66,7 @@ func (c *customAdaptor) ClusterList(eid string) ([]*v1alpha1.Cluster, error) {
 				logrus.Warningf("query kubernetes cluster failure %s", err.Error())
 			}
 			if cluster != nil {
-				if versionutil.CheckVersion(cluster.KubernetesVersion) {
+				if versionutil.CheckVersion("v1.13.0") {
 					cluster.CanInit = true
 				}
 				re = append(re, cluster)
