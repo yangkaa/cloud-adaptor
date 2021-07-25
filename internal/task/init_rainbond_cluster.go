@@ -344,6 +344,7 @@ func (h *cloudInitTaskHandler) run(ctx context.Context, initTask Task, initConfi
 	}()
 	defer func() {
 		if err := recover(); err != nil {
+			logrus.Errorf("-------->err is %v", err)
 			debug.PrintStack()
 		}
 	}()
