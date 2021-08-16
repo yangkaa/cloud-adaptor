@@ -70,4 +70,7 @@ var (
 	ErrDuplicateKubernetesUpdateTask = newByMessage(409, 7025, "kubernetes update task conflict")
 	ErrLastTaskNotFound              = newByMessage(404, 7026, "update kubernetes task not found")
 	ErrClusterNotFound               = newByMessage(404, 7027, "cluster not found")
+
+	ErrRainbondClusterInstalled = newByMessage(409, 7028, "rainbond cluster is already installed")
+	ErrClusterTaskNotFound      = newByMessage(404, 7029, "cluster task not found")
 )
