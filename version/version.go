@@ -30,7 +30,7 @@ var RainbondRegionVersion = "v5.4.0-release"
 var OperatorVersion = "v2.1.0"
 
 //InstallImageRepo install image repo
-var InstallImageRepo = "registry.cn-hangzhou.aliyuncs.com/goodrain"
+var InstallImageRepo = "registry.cn-hangzhou.aliyuncs.com/yangkaa"
 
 func init() {
 	if os.Getenv("INSTALL_IMAGE_REPO") != "" {
