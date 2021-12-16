@@ -21,6 +21,9 @@ package operator
 import (
 	"context"
 	"fmt"
+	"github.com/sirupsen/logrus"
+	"gopkg.in/yaml.v2"
+	"io/ioutil"
 	"path"
 	"time"
 
@@ -100,6 +103,12 @@ func parseComponentClaim(claim *componentClaim) *v1alpha1.RbdComponent {
 func (o *Operator) Install(cluster *rainbondv1alpha1.RainbondCluster) error {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*20)
 	defer cancel()
+	filePath := "/root/ad/rbdcluster.yml"
+	out, _ := yaml.Marshal(&cluster)
+	if err := ioutil.WriteFile(filePath, out, 0755); err != nil {
+		logrus.Errorf("write rbdcluster config file failure %s", err.Error())
+		return nil
+	}
 	if err := o.RuntimeClient.Create(ctx, cluster); err != nil {
 		if !errors.IsAlreadyExists(err) {
 			return fmt.Errorf("create rainbond cluster failure %s", err.Error())
@@ -127,6 +136,7 @@ func (o *Operator) Install(cluster *rainbondv1alpha1.RainbondCluster) error {
 		}
 		*cluster = old
 	}
+
 	if err := o.createRainbondVolumes(cluster); err != nil {
 		return fmt.Errorf("create rainbond volume failure %s", err.Error())
 	}
@@ -147,7 +157,12 @@ func (o *Operator) createComponents(cluster *v1alpha1.RainbondCluster) error {
 		data := parseComponentClaim(claim)
 		// init component
 		data.Namespace = o.Namespace
-
+		filePath := fmt.Sprintf("/root/ad/%s.yml", data.Name)
+		out, _ := yaml.Marshal(&data)
+		if err := ioutil.WriteFile(filePath, out, 0755); err != nil {
+			logrus.Errorf("write rbdcomponent %s config file failure %s", data.Name, err.Error())
+			return nil
+		}
 		err := retryutil.Retry(time.Second*2, 3, func() (bool, error) {
 			if err := o.createResourceIfNotExists(data); err != nil {
 				return false, err
@@ -275,6 +290,12 @@ func (o *Operator) createRainbondPackage() error {
 			ImageHubPass: o.ImageHubPass,
 		},
 	}
+	filePath := "/root/ad/rbdpkg.yml"
+	out, _ := yaml.Marshal(&pkg)
+	if err := ioutil.WriteFile(filePath, out, 0755); err != nil {
+		logrus.Errorf("write rbdpkg config file failure %s", err.Error())
+		return nil
+	}
 	return o.createResourceIfNotExists(pkg)
 }
 
@@ -282,6 +303,12 @@ func (o *Operator) createRainbondVolumes(cluster *v1alpha1.RainbondCluster) erro
 	if cluster.Spec.RainbondVolumeSpecRWX != nil {
 		rwx := setRainbondVolume("rainbondvolumerwx", o.Namespace, rbdutil.LabelsForAccessModeRWX(), cluster.Spec.RainbondVolumeSpecRWX)
 		rwx.Spec.ImageRepository = o.RainbondImageRepository
+		filePath := "/root/ad/rbdvolume.yml"
+		out, _ := yaml.Marshal(&rwx)
+		if err := ioutil.WriteFile(filePath, out, 0755); err != nil {
+			logrus.Errorf("write rbdvolume config file failure %s", err.Error())
+			return nil
+		}
 		if err := o.createResourceIfNotExists(rwx); err != nil {
 			return err
 		}

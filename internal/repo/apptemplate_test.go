@@ -20,6 +20,7 @@ package repo
 
 import (
 	"github.com/pkg/errors"
+	"goodrain.com/cloud-adaptor/internal/domain"
 	"goodrain.com/cloud-adaptor/pkg/bcode"
 	"testing"
 
@@ -39,7 +40,10 @@ func TestGetTemplateVersion(t *testing.T) {
 	templateVersioner := appstore.NewTemplateVersioner(cfg)
 
 	templateVersionRepo := NewTemplateVersionRepo(templateVersioner)
-
+	appStore := &domain.AppStore{
+		Name: "rainbond",
+		URL:  "https://openchart.goodrain.com/goodrain/rainbond",
+	}
 	tests := []struct {
 		name    string
 		version string
@@ -64,7 +68,7 @@ func TestGetTemplateVersion(t *testing.T) {
 
 	for _, tc := range tests {
 		tc := tc
-		version, err := templateVersionRepo.GetTemplateVersion("rainbond", "https://openchart.goodrain.com/goodrain/rainbond", "mariadb", tc.version)
+		version, err := templateVersionRepo.GetTemplateVersion(appStore, "mariadb", tc.version)
 		if !assert.Equal(t, tc.err, errors.Cause(err)) {
 			t.FailNow()
 		}
