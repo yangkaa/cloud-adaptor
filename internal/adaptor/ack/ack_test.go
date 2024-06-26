@@ -33,6 +33,10 @@ import (
 var testAccess = ""
 var testSecret = ""
 
+func TestJson(t *testing.T) {
+
+}
+
 func TestListCluster(t *testing.T) {
 	adaptor, err := Create(testAccess, testSecret)
 	if err != nil {
