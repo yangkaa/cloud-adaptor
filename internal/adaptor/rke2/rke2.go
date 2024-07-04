@@ -26,7 +26,6 @@ func InitConn(rke2Server *model.RKE2Nodes) (conn *ssh.Client, err error) {
 		logrus.Errorf("Failed to dial: %s", err)
 		return nil, err
 	}
-
 	return conn, err
 }
 func UninstallRKE2Node(rke2Server *model.RKE2Nodes) {
@@ -52,6 +51,7 @@ func UninstallRKE2Node(rke2Server *model.RKE2Nodes) {
 		return
 	}
 }
+
 func InstallRKE2Cluster(cluster *model.RKECluster, rke2Server *model.RKE2Nodes) error {
 	conn, err := InitConn(rke2Server)
 
