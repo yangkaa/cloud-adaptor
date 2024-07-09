@@ -20,12 +20,14 @@ package handler
 
 import (
 	"encoding/json"
+	"fmt"
 	"goodrain.com/cloud-adaptor/internal/adaptor/rke2"
 	"goodrain.com/cloud-adaptor/internal/datastore"
 	"goodrain.com/cloud-adaptor/internal/model"
 	"goodrain.com/cloud-adaptor/pkg/util/ssh"
 	"io/ioutil"
 	"net/http"
+	"os/exec"
 	"strings"
 
 	"github.com/ghodss/yaml"
@@ -551,6 +553,41 @@ func (e *ClusterHandler) CheckSSHPassword(ctx *gin.Context) {
 		Status: err == nil,
 	}
 	ginutil.JSON(ctx, res)
+}
+
+// RKE2DeleteCluster 安装rainbond
+func (e *ClusterHandler) InstallRainbond(ctx *gin.Context) {
+	go func() {
+		var cluster model.RKECluster
+		err := datastore.GetGDB().Find(&cluster, "clusterID = ?", ctx.Param("clusterID")).Error
+		if err != nil {
+			logrus.Errorf("Failed to get cluster: %s", err)
+			ginutil.JSON(ctx, nil, err)
+			return
+		}
+		c := exec.Command("sh", "-c", fmt.Sprintf(`echo '%s' > kube.config`, cluster.KubeConfig))
+		_, err = c.Output()
+		if err != nil {
+			return
+		}
+
+		c1 := exec.Command("sh", "-c", "helm repo add rainbond https://openchart.goodrain.com/goodrain/rainbond && helm repo update")
+		_, err = c1.Output()
+		if err != nil {
+			return
+		}
+
+		c2 := exec.Command("sh", "-c", "helm install rainbond rainbond/rainbond-cluster -n rbd-system --kubeconfig kube.config --set Component.rbd_app_ui.enable=false")
+		_, err = c2.Output()
+		if err != nil {
+			return
+		}
+		datastore.GetGDB().Delete(&model.RKECluster{}, "clusterID = ?", ctx.Param("clusterID"))
+	}()
+	ctx.JSON(http.StatusOK, gin.H{
+		"code": http.StatusOK,
+		"msg":  "安装rainbond集群成功",
+	})
 }
 
 // RKE2DeleteCluster 删除集群

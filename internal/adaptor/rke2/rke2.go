@@ -114,8 +114,8 @@ func installRKE2(conn *ssh.Client, rke2Server *model.RKE2Nodes, cluster *model.R
 	if err != nil {
 		return err
 	}
-
-	if cluster != nil { //主节点才会去获取kube config
+	//主节点才会去获取kube config
+	if cluster != nil {
 		// 步骤四：保存kubeconfig文件
 		kubeconfig, err := saveKubeconfig(conn)
 		if err != nil {
@@ -124,8 +124,20 @@ func installRKE2(conn *ssh.Client, rke2Server *model.RKE2Nodes, cluster *model.R
 		cluster.KubeConfig = strings.Replace(kubeconfig, "127.0.0.1", rke2Server.Host, -1)
 		cluster.APIURL = "https://" + rke2Server.Host + ":6443"
 		datastore.GetGDB().Save(cluster)
-	}
 
+		// 步骤五： 自动创建rbd-system命名空间
+		session2, err := conn.NewSession()
+		if err != nil {
+			logrus.Errorf("Failed to create session: %s", err)
+			return err
+		}
+		defer session2.Close()
+		err = session.Run("kubectl create ns rbd-system")
+		if err != nil {
+			logrus.Errorf("Failed to exec create ns: %s", err)
+			return err
+		}
+	}
 	return nil
 }
 
@@ -176,7 +188,7 @@ tls-san:
 }
 
 func start(conn *ssh.Client, InstallRke2Type string) error {
-	cmd := "systemctl enable rke2-server.service; systemctl start rke2-server.service; cp /var/lib/rancher/rke2/bin/kubectl /usr/local/bin/kubectl; mkdir .kube; cp /etc/rancher/rke2/rke2.yaml .kube/config"
+	cmd := "systemctl enable rke2-server.service; systemctl start rke2-server.service; cp /var/lib/rancher/rke2/bin/kubectl /usr/local/bin/kubectl; mkdir .kube; cp /etc/rancher/rke2/rke2.yaml .kube/config; "
 
 	if InstallRke2Type == "agent" {
 		cmd = "systemctl enable rke2-agent.service; systemctl start rke2-agent.service"
