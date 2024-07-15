@@ -195,7 +195,7 @@ func (c *ClusterUsecase) ListKubernetesCluster(eid string, re v1.ListKubernetesC
 }
 
 // CreateKubernetesClusterByRKE2 create kubernetes cluster task
-func (c *ClusterUsecase) CreateKubernetesClusterByRKE2(eid, name string, nodes []model.RKE2Nodes, version string) error {
+func (c *ClusterUsecase) CreateKubernetesClusterByRKE2(eid, name string, nodes []model.RKE2Nodes, version string) (string, error) {
 	clusterID := uuidutil.NewUUID()
 
 	if version == "" {
@@ -212,7 +212,7 @@ func (c *ClusterUsecase) CreateKubernetesClusterByRKE2(eid, name string, nodes [
 		ClusterID:         clusterID,
 	}
 	if err := c.rkeClusterRepo.Create(rkeCluster); err != nil {
-		return err
+		return "", err
 	}
 	for i := range nodes {
 		nodes[i].ClusterID = clusterID
@@ -220,7 +220,7 @@ func (c *ClusterUsecase) CreateKubernetesClusterByRKE2(eid, name string, nodes [
 	}
 	datastore.GetGDB().CreateInBatches(&nodes, 10)
 
-	return nil
+	return clusterID, nil
 }
 
 // CreateKubernetesCluster create kubernetes cluster task
