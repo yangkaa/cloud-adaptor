@@ -92,6 +92,7 @@ type BackupListModelData struct {
 // RKE2Nodes -
 type RKE2Nodes struct {
 	Model
+	NodeName   string `gorm:"column:node_name" json:"node_name"`
 	Role       string `gorm:"column:role" json:"role"`
 	Host       string `gorm:"column:host" json:"host"`
 	Port       uint   `gorm:"column:port" json:"port"`

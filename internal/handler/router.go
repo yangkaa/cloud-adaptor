@@ -90,7 +90,7 @@ func (r *Router) NewRouter() *gin.Engine {
 	// cluster
 	entv1.POST("/rke2", r.cluster.RKE2)                                       // 安装集群
 	entv1.DELETE("/rke2/:clusterID", r.cluster.RKE2DeleteCluster)             //卸载rke2集群
-	entv1.GET("/rke2/install/rainbond/:clusterID", r.cluster.InstallRainbond) //安装rainbond集群
+	entv1.PUT("/rke2/install/rainbond/:clusterID", r.cluster.InstallRainbond) //安装rainbond集群
 
 	entv1.GET("/rke2/nodes", r.cluster.RKE2GetNodes)          //从数据库中获取所有的节点信息
 	entv1.GET("/rke2/node/status", r.cluster.NodeStatus)      //从k8s中获取节点信息，pod信息

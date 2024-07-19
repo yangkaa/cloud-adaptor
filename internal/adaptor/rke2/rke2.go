@@ -90,6 +90,17 @@ func InstallRKE2Cluster(cluster *model.RKECluster, rke2Server *model.RKE2Nodes) 
 	return installRKE2(conn, rke2Server, cluster)
 }
 
+func InitSession(conn *ssh.Client, command string) error {
+	session, err := conn.NewSession()
+	if err != nil {
+		logrus.Errorf("Failed to create session: %s", err)
+		return err
+	}
+	defer session.Close()
+	err = session.Run(command)
+	return err
+}
+
 func installRKE2(conn *ssh.Client, rke2Server *model.RKE2Nodes, cluster *model.RKECluster) error {
 	session, err := conn.NewSession()
 
@@ -98,7 +109,11 @@ func installRKE2(conn *ssh.Client, rke2Server *model.RKE2Nodes, cluster *model.R
 		return err
 	}
 
-	err = session.Run("curl -sfL https://get.rainbond.com/rke2-install.sh | INSTALL_RKE2_VERSION=v1.25.16+rke2r1 INSTALL_RKE2_MIRROR=cn INSTALL_RKE2_TYPE=\"" + rke2Server.Role + "\" sh -")
+	//先创建一个目录，/etc/rancher/rke2/config.yaml，把这个名字传到配置文件里面执行
+	var rkeConfig = `node-name: ` + rke2Server.NodeName + ``
+	rke2Server.ConfigFile = rkeConfig
+
+	err = InitSession(conn, "curl -sfL https://get.rainbond.com/rke2-install.sh | INSTALL_RKE2_VERSION=v1.25.16+rke2r1 INSTALL_RKE2_MIRROR=cn INSTALL_RKE2_TYPE=\""+rke2Server.Role+"\" sh -")
 	if err != nil {
 		logrus.Errorf("Failed to execute installRKE2 command: %s", err)
 		return err

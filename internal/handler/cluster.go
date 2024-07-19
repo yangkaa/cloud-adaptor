@@ -27,6 +27,7 @@ import (
 	"goodrain.com/cloud-adaptor/pkg/util/ssh"
 	"io/ioutil"
 	"net/http"
+	"os"
 	"os/exec"
 	"strings"
 
@@ -557,6 +558,22 @@ func (e *ClusterHandler) CheckSSHPassword(ctx *gin.Context) {
 
 // RKE2DeleteCluster 安装rainbond
 func (e *ClusterHandler) InstallRainbond(ctx *gin.Context) {
+
+	var req v1.SetRainbondClusterConfigReq
+	if err := ctx.ShouldBindJSON(&req); err != nil {
+		logrus.Errorf("bind update init status failure %s", err.Error())
+		ginutil.JSON(ctx, nil, bcode.BadRequest)
+		return
+	}
+
+	valuesPath := "/app/values.yaml"
+
+	if err := os.WriteFile(valuesPath, []byte(req.Config), 0755); err != nil {
+		logrus.Errorf("Failed to get values.yaml: %s", err)
+		ginutil.JSON(ctx, nil, bcode.BadRequest)
+		return
+	}
+
 	go func() {
 		var cluster model.RKECluster
 		err := datastore.GetGDB().Find(&cluster, "clusterID = ?", ctx.Param("clusterID")).Error
@@ -571,18 +588,19 @@ func (e *ClusterHandler) InstallRainbond(ctx *gin.Context) {
 			return
 		}
 
-		c1 := exec.Command("sh", "-c", "helm repo add rainbond https://openchart.goodrain.com/goodrain/rainbond && helm repo update")
-		_, err = c1.Output()
-		if err != nil {
-			return
-		}
+		//c1 := exec.Command("sh", "-c", "helm repo add rainbond https://openchart.goodrain.com/goodrain/rainbond && helm repo update")
+		//_, err = c1.Output()
+		//if err != nil {
+		//	fmt.Println(err)
+		//	return
+		//}
 
-		c2 := exec.Command("sh", "-c", "helm install rainbond rainbond/rainbond-cluster -n rbd-system --kubeconfig kube.config --set Component.rbd_app_ui.enable=false")
+		c2 := exec.Command("sh", "-c", fmt.Sprintf("helm install rainbond /app/rainbond-cluster/ -n rbd-system --kubeconfig kube.config -f %s --set Component.rbd_app_ui.enable=false", valuesPath))
 		_, err = c2.Output()
 		if err != nil {
 			return
 		}
-		datastore.GetGDB().Delete(&model.RKECluster{}, "clusterID = ?", ctx.Param("clusterID"))
+		//datastore.GetGDB().Delete(&model.RKECluster{}, "clusterID = ?", ctx.Param("clusterID"))
 	}()
 	ctx.JSON(http.StatusOK, gin.H{
 		"code": http.StatusOK,
@@ -646,9 +664,14 @@ func (e *ClusterHandler) RKE2GetNodes(ctx *gin.Context) {
 		ginutil.JSON(ctx, nil, bcode.BadRequest)
 		return
 	}
+	list := struct {
+		List []model.RKE2Nodes
+	}{
+		List: nodes,
+	}
 	ctx.JSON(http.StatusOK, gin.H{
 		"code": http.StatusOK,
-		"data": nodes,
+		"data": list,
 	})
 }
 
@@ -681,7 +704,7 @@ func (e *ClusterHandler) RKE2(ctx *gin.Context) {
 		return
 	}
 
-	err = e.cluster.CreateKubernetesClusterByRKE2(ctx.Param("eid"), req.Name, req.Nodes, req.Version)
+	clusterId, err := e.cluster.CreateKubernetesClusterByRKE2(ctx.Param("eid"), req.Name, req.Nodes, req.Version)
 	if err != nil {
 		logrus.Errorf("create rke2 cluster failure %s", err.Error())
 		ctx.JSON(http.StatusBadRequest, gin.H{
@@ -690,8 +713,9 @@ func (e *ClusterHandler) RKE2(ctx *gin.Context) {
 		})
 	} else {
 		ctx.JSON(http.StatusOK, gin.H{
-			"code": http.StatusOK,
-			"msg":  "创建成功",
+			"code":      http.StatusOK,
+			"msg":       "创建成功",
+			"clusterID": clusterId,
 		})
 	}
 }
