@@ -558,12 +558,17 @@ func (e *ClusterHandler) CheckSSHPassword(ctx *gin.Context) {
 
 // RKE2DeleteCluster 安装rainbond
 func (e *ClusterHandler) InstallRainbond(ctx *gin.Context) {
-	var values string
-	values = ctx.PostForm("config")
+
+	var req v1.SetRainbondClusterConfigReq
+	if err := ctx.ShouldBindJSON(&req); err != nil {
+		logrus.Errorf("bind update init status failure %s", err.Error())
+		ginutil.JSON(ctx, nil, bcode.BadRequest)
+		return
+	}
 
 	valuesPath := "/app/values.yaml"
 
-	if err := os.WriteFile(valuesPath, []byte(values), 0755); err != nil {
+	if err := os.WriteFile(valuesPath, []byte(req.Config), 0755); err != nil {
 		logrus.Errorf("Failed to get values.yaml: %s", err)
 		ginutil.JSON(ctx, nil, bcode.BadRequest)
 		return
@@ -583,18 +588,19 @@ func (e *ClusterHandler) InstallRainbond(ctx *gin.Context) {
 			return
 		}
 
-		c1 := exec.Command("sh", "-c", "helm repo add rainbond https://openchart.goodrain.com/goodrain/rainbond && helm repo update")
-		_, err = c1.Output()
-		if err != nil {
-			return
-		}
+		//c1 := exec.Command("sh", "-c", "helm repo add rainbond https://openchart.goodrain.com/goodrain/rainbond && helm repo update")
+		//_, err = c1.Output()
+		//if err != nil {
+		//	fmt.Println(err)
+		//	return
+		//}
 
-		c2 := exec.Command("sh", "-c", fmt.Sprintf("helm install rainbond rainbond/rainbond-cluster -n rbd-system --kubeconfig kube.config -f %s --set Component.rbd_app_ui.enable=false", valuesPath))
+		c2 := exec.Command("sh", "-c", fmt.Sprintf("helm install rainbond /app/rainbond-cluster/ -n rbd-system --kubeconfig kube.config -f %s --set Component.rbd_app_ui.enable=false", valuesPath))
 		_, err = c2.Output()
 		if err != nil {
 			return
 		}
-		datastore.GetGDB().Delete(&model.RKECluster{}, "clusterID = ?", ctx.Param("clusterID"))
+		//datastore.GetGDB().Delete(&model.RKECluster{}, "clusterID = ?", ctx.Param("clusterID"))
 	}()
 	ctx.JSON(http.StatusOK, gin.H{
 		"code": http.StatusOK,

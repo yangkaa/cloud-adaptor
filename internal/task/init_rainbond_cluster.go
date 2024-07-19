@@ -31,16 +31,11 @@ import (
 	"github.com/sirupsen/logrus"
 	apiv1 "goodrain.com/cloud-adaptor/api/cloud-adaptor/v1"
 	"goodrain.com/cloud-adaptor/internal/adaptor/factory"
-	"goodrain.com/cloud-adaptor/internal/datastore"
-	"goodrain.com/cloud-adaptor/internal/operator"
-	"goodrain.com/cloud-adaptor/internal/repo"
 	"goodrain.com/cloud-adaptor/internal/types"
 	"goodrain.com/cloud-adaptor/internal/usecase"
 	"goodrain.com/cloud-adaptor/pkg/util/constants"
 	"goodrain.com/cloud-adaptor/pkg/util/versionutil"
-	"goodrain.com/cloud-adaptor/version"
 	v1 "k8s.io/api/core/v1"
-	k8sErrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -51,6 +46,13 @@ type InitRainbondCluster struct {
 }
 
 func (c *InitRainbondCluster) rollback(step, message, status string) {
+	if status == "failure" {
+		logrus.Errorf("%s failure, Message: %s", step, message)
+	}
+	c.result <- apiv1.Message{StepType: step, Message: message, Status: status}
+}
+
+func (c *InitRainbondCluster) Rollback(step, message, status string) {
 	if status == "failure" {
 		logrus.Errorf("%s failure, Message: %s", step, message)
 	}
@@ -131,88 +133,6 @@ func (c *InitRainbondCluster) Run(ctx context.Context) {
 		return
 	}
 	c.rollback("CheckCluster", c.config.ClusterID, "success")
-
-	// select gateway and chaos node
-	gatewayNodes, chaosNodes := c.GetRainbondGatewayNodeAndChaosNodes(nodes.Items)
-	initConfig := adaptor.GetRainbondInitConfig(c.config.EnterpriseID, cluster, gatewayNodes, chaosNodes, c.rollback)
-	initConfig.RainbondVersion = version.RainbondRegionVersion
-	// init rainbond
-	c.rollback("InitRainbondRegionOperator", "", "start")
-	if len(initConfig.EIPs) == 0 {
-		c.rollback("InitRainbondRegionOperator", "can not select eip", "failure")
-		return
-	}
-
-	rri := operator.NewRainbondRegionInit(*kubeConfig, repo.NewRainbondClusterConfigRepo(datastore.GetGDB()))
-	if err := rri.InitRainbondRegion(initConfig); err != nil {
-		c.rollback("InitRainbondRegionOperator", err.Error(), "failure")
-		return
-	}
-	ticker := time.NewTicker(time.Second * 5)
-	timer := time.NewTimer(time.Minute * 60)
-	defer timer.Stop()
-	defer ticker.Stop()
-	var operatorMessage, imageHubMessage, packageMessage, apiReadyMessage bool
-	for {
-		select {
-		case <-ctx.Done():
-			c.rollback("InitRainbondRegion", "context cancel", "failure")
-			return
-		case <-ticker.C:
-		case <-timer.C:
-			c.rollback("InitRainbondRegion", "waiting rainbond region ready timeout", "failure")
-			return
-		}
-		status, err := rri.GetRainbondRegionStatus(initConfig.ClusterID)
-		if err != nil {
-			if k8sErrors.IsNotFound(err) {
-				c.rollback("InitRainbondRegion", err.Error(), "failure")
-				return
-			}
-			logrus.Errorf("get rainbond region status failure %s", err.Error())
-		}
-		if status == nil {
-			continue
-		}
-		if status.OperatorReady && !operatorMessage {
-			c.rollback("InitRainbondRegionOperator", "", "success")
-			c.rollback("InitRainbondRegionImageHub", "", "start")
-			operatorMessage = true
-			continue
-		}
-
-		if idx, condition := status.RainbondCluster.Status.GetCondition(rainbondv1alpha1.RainbondClusterConditionTypeImageRepository); !imageHubMessage && idx != -1 && condition.Status == v1.ConditionTrue {
-			c.rollback("InitRainbondRegionImageHub", "", "success")
-			c.rollback("InitRainbondRegionPackage", "", "start")
-			imageHubMessage = true
-			continue
-		}
-		statusStr := fmt.Sprintf("Push Images:%d/%d\t", len(status.RainbondPackage.Status.ImagesPushed), status.RainbondPackage.Status.ImagesNumber)
-		for _, con := range status.RainbondCluster.Status.Conditions {
-			if con.Status == v1.ConditionTrue {
-				statusStr += fmt.Sprintf("%s=>%s;\t", con.Type, con.Status)
-			} else {
-				statusStr += fmt.Sprintf("%s=>%s=>%s=>%s;\t", con.Type, con.Status, con.Reason, con.Message)
-			}
-		}
-		logrus.Infof("cluster %s states: %s", cluster.Name, statusStr)
-
-		for _, con := range status.RainbondPackage.Status.Conditions {
-			if con.Type == rainbondv1alpha1.Ready && con.Status == rainbondv1alpha1.Completed && !packageMessage {
-				c.rollback("InitRainbondRegionPackage", "", "success")
-				c.rollback("InitRainbondRegionRegionConfig", "", "start")
-				packageMessage = true
-			}
-			continue
-		}
-
-		idx, condition := status.RainbondCluster.Status.GetCondition(rainbondv1alpha1.RainbondClusterConditionTypeRunning)
-		if idx != -1 && condition.Status == v1.ConditionTrue && packageMessage && !apiReadyMessage {
-			apiReadyMessage = true
-			break
-		}
-	}
-	c.rollback("InitRainbondRegion", cluster.ClusterID, "success")
 }
 
 // GetRainbondGatewayNodeAndChaosNodes get gateway nodes

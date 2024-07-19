@@ -86,7 +86,8 @@ func rke2StartServer(rkeClusterRepository repo.RKEClusterRepository) {
 				time.Sleep(5 * time.Second)
 				continue
 			}
-			for _, cluster := range clusters {
+			for _, cluster_bak := range clusters {
+				cluster := cluster_bak
 				var node model.RKE2Nodes
 				err := datastore.GetGDB().First(&node, "cluster_id = ? and stats = ?", cluster.ClusterID, "initial").Error
 				if err != nil {
@@ -125,7 +126,8 @@ func rke2StartAgent(rkeClusterRepository repo.RKEClusterRepository) {
 				time.Sleep(5 * time.Second)
 				continue
 			}
-			for _, node := range nodes {
+			for _, node_bak := range nodes {
+				node := node_bak
 				err := rke2.InstallRKE2Cluster(nil, &node) //普遍安装第一台节点
 
 				if err != nil {
